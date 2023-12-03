@@ -1,0 +1,35 @@
+#FROM --platform=linux/arm64/v8 amazoncorretto:21.0.1-alpine3.18 AS build
+#Error: java.io.IOException: Cannot run program "objcopy": error=2, No such file or directory
+#Error response from daemon: The command
+#'/bin/sh -c jlink --add-modules $(cat deps.info) --strip-debug --no-header-files --no-man-pages --output /myjre'
+#returned a non-zero code: 1
+
+#FROM --platform=linux/arm64/v8 mcr.microsoft.com/openjdk/jdk:21-distroless AS build
+#Step 4/13 : RUN jar xf app.jar
+# ---> Running in d378fc62211b
+#Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: exec: "/bin/sh": stat /bin/sh: no such file or directory: unknown
+
+FROM --platform=linux/arm64/v8 eclipse-temurin:21.0.1_12-jdk-alpine AS build
+WORKDIR application
+COPY build/libs/*.jar app.jar
+RUN jar xf app.jar
+RUN jdeps --ignore-missing-deps -q  \
+    --recursive  \
+    --multi-release 21  \
+    --print-module-deps  \
+    --class-path 'BOOT-INF/lib/*'  \
+    app.jar > deps.info
+RUN jlink \
+    --add-modules $(cat deps.info) \
+    --strip-debug \
+    --no-header-files \
+    --no-man-pages \
+    --output /myjre
+
+FROM --platform=linux/arm64/v8 alpine:3.18.4
+ENV JAVA_HOME /user/java/jdk21
+ENV PATH $JAVA_HOME/bin:$PATH
+COPY --from=build /myjre $JAVA_HOME
+WORKDIR application
+COPY build/libs/*.jar app.jar
+ENTRYPOINT java -showversion -jar app.jar

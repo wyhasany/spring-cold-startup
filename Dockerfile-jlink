@@ -1,0 +1,24 @@
+FROM --platform=linux/amd64 bellsoft/liberica-runtime-container:jdk-all-21-musl AS build
+WORKDIR application
+COPY build/libs/*.jar app.jar
+RUN jar xf app.jar
+RUN jdeps --ignore-missing-deps -q  \
+    --recursive  \
+    --multi-release 21  \
+    --print-module-deps  \
+    --class-path 'BOOT-INF/lib/*'  \
+    app.jar > deps.info
+RUN jlink \
+    --add-modules $(cat deps.info) \
+    --strip-debug \
+    --no-header-files \
+    --no-man-pages \
+    --output /myjre
+
+FROM --platform=linux/amd64 alpine:3.18.4
+ENV JAVA_HOME /user/java/jdk21
+ENV PATH $JAVA_HOME/bin:$PATH
+COPY --from=build /myjre $JAVA_HOME
+WORKDIR application
+COPY build/libs/*.jar app.jar
+ENTRYPOINT java -showversion -jar app.jar
