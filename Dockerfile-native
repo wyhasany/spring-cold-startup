@@ -1,0 +1,11 @@
+#https://container-registry.oracle.com/
+FROM container-registry.oracle.com/graalvm/native-image:21.0.1-ol9-20231107 AS builder
+WORKDIR /build
+COPY . /build
+RUN microdnf install findutils
+RUN ./gradlew nativeCompile
+
+FROM ubuntu:focal
+EXPOSE 8080
+COPY --from=builder /build/build/native/nativeCompile/spring-cold-startup spring-petclinic
+ENTRYPOINT ["/spring-petclinic"]
