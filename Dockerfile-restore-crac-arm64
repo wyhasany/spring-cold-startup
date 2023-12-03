@@ -1,0 +1,14 @@
+FROM --platform=linux/arm64/v8 alpine:3.18.4
+ENV JAVA_HOME /opt/jdk
+ENV PATH $JAVA_HOME/bin:$PATH
+ADD "https://cdn.azul.com/zulu/bin/zulu21.30.23-ca-crac-jdk21.0.1-linux_musl_aarch64.tar.gz" $JAVA_HOME/openjdk.tar.gz
+RUN tar --extract --file $JAVA_HOME/openjdk.tar.gz --directory "$JAVA_HOME" --strip-components 1; rm $JAVA_HOME/openjdk.tar.gz
+WORKDIR application
+COPY build/libs/*.jar app.jar
+RUN java \
+    -XX:CRaCCheckpointTo=checkpoint \
+    -Dspring.context.checkpoint=onRefresh \
+    -jar app.jar
+#ENTRYPOINT java -showversion -jar app.jar
+ENTRYPOINT ["java", "-showversion", "-XX:CRaCRestoreFrom=checkpoint", "-jar", "app.jar"]
+
