@@ -1,0 +1,76 @@
+# required apiVersion and kind, for compatibility over versions of the cli
+apiVersion: jib/v1alpha1
+kind: BuildFile
+
+# full base image specification with detail for manifest lists or multiple architectures
+from:
+    image: "bellsoft/liberica-openjre-alpine:21.0.1-cds"
+    # set platforms for multi architecture builds, defaults to `linux/amd64`
+    platforms:
+        - architecture: "arm64"
+          os: "linux"
+
+# creation time sets the creation time of the container only
+# can be: millis since epoch (ex: 1000) or an ISO 8601 creation time (ex: 2020-06-08T14:54:36+00:00)
+creationTime: 0
+
+format: Docker # Docker or OCI
+
+# container environment variables
+#environment:
+#    "KEY1": "v1"
+#    "KEY2": "v2"
+
+# container labels
+#labels:
+#    "label1": "l1"
+#    "label2": "l2"
+
+# specify volume mount points
+#volumes:
+#    - "/volume1"
+#    - "/volume2"
+
+# specify exposed ports metadata (port-number/protocol)
+exposedPorts:
+    - "8080"
+#    - "123/udp"
+#    - "456"      # default protocol is tcp
+#    - "789/tcp"
+
+# the user to run the container (does not affect file permissions) aka  nobody
+user: "65534"
+
+workingDirectory: "/app"
+
+entrypoint:
+    - "java"
+#    - "-cp"
+#    - "/app"
+    - "org.springframework.boot.loader.launch.JarLauncher"
+#cmd:
+#    - "--param"
+#    - "param"
+
+# file layers of the container
+layers:
+    properties:                        # file properties applied to all layers
+#        filePermissions: "400"           # octal file permissions, default is 644
+#        directoryPermissions: "600"      # octal directory permissions, default is 755
+        user: "65534"                        # default user is 0
+        group: "65534"                       # default group is 0
+#        timestamp: "0"                # timestamp can be millis since epoch or ISO 8601 format, default is "Epoch + 1 second"
+    entries:
+        - name: "dependencies"                # first layer
+          files:                         # a list of copy directives constitute a single layer
+              - src: "build/libs/dependencies" # a simple copy directive (inherits layer level file properties)
+                dest: "/app"       # all 'dest' specifications must be absolute paths on the container
+                    # see above for full list of properties...
+        - name: "spring-boot-loader"                 # second layer, inherits file properties from global
+          files:
+              - src: "build/libs/spring-boot-loader"
+                dest: "/app"
+        - name: "application"
+          files:
+              - src: "build/libs/application"
+                dest: "/app"
