@@ -1,0 +1,6 @@
+FROM --platform=linux/arm64/v8 bellsoft/liberica-openjre-alpine-musl:21.0.1-cds
+WORKDIR application
+COPY build/libs/*.jar app.jar
+#ENTRYPOINT java -showversion -jar app.jar
+ENTRYPOINT ["java", "-showversion", "-jar", "app.jar"]
+

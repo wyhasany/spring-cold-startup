@@ -1,0 +1,7 @@
+FROM --platform=linux/amd64 bellsoft/liberica-openjre-alpine-musl:21.0.1-cds
+#x86_64 cpu architecture
+WORKDIR application
+COPY build/libs/*.jar app.jar
+#ADD start.sh ./
+#ENTRYPOINT ["/application/start.sh"]
+ENTRYPOINT ["java", "-showversion", "-jar", "app.jar"]
