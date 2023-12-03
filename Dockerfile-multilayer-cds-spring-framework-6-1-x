@@ -1,0 +1,24 @@
+FROM --platform=linux/arm64/v8 bellsoft/liberica-openjre-alpine-musl:21.0.1-cds AS builder
+WORKDIR application
+COPY build/libs/*.jar app.jar
+RUN java -Djarmode=layertools -jar app.jar extract
+RUN cp -R ./dependencies/* ./
+RUN cp -R ./spring-boot-loader/* ./
+RUN cp -R ./application/* ./
+RUN java -Xshare:dump
+RUN java \
+    -Dspring.context.exit=onRefresh \
+    -XX:ArchiveClassesAtExit=/application/app-cds.jsa \
+    -Xshare:on \
+#    -Xlog:cds \
+    org.springframework.boot.loader.launch.JarLauncher
+
+FROM --platform=linux/arm64/v8 bellsoft/liberica-openjre-alpine-musl:21.0.1-cds
+WORKDIR application
+COPY --from=builder /usr/lib/jvm/jre/lib/server/classes.jsa /usr/lib/jvm/jre/lib/server/classes.jsa
+COPY --from=builder application/dependencies/ ./
+COPY --from=builder application/spring-boot-loader/ ./
+COPY --from=builder application/snapshot-dependencies/ ./
+COPY --from=builder application/application/ ./
+COPY --from=builder application/app-cds.jsa /application/app-cds.jsa
+ENTRYPOINT ["java", "-XX:SharedArchiveFile=app-cds.jsa", "-Xshare:on", "-Xlog:class+load:file=cds.log", "org.springframework.boot.loader.launch.JarLauncher"]
